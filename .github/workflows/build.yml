@@ -1,7 +1,38 @@
-      - run: gradle build --no-daemon
-        working-directory: flr_merged
+name: Build FLR Visuals
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find project folder
+        id: p
+        run: |
+          F=$(find . -name build.gradle -not -path './.git/*' | head -n1)
+          if [ -z "$F" ]; then
+            echo "::error::build.gradle not found in repository"
+            ls -R | head -50
+            exit 1
+          fi
+          echo "dir=$(dirname "$F")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+
+      - name: Build
+        run: gradle build --no-daemon
+        working-directory: ${{ steps.p.outputs.dir }}
+
       - uses: actions/upload-artifact@v4
         with:
           name: flr-visuals
-          path: flr_merged/build/libs/*.jar
-          if-no-files-found: error
+          path: ${{ steps.p.outputs.dir }}/build/libs/*.jar
